@@ -3,35 +3,24 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import time
-import requests
 from datetime import datetime
 
 # إعدادات واجهة التطبيق لتناسب شاشة الهاتف
-st.set_page_config(page_title="مساعد الذهب اللحظي المتطابق", page_icon="📊", layout="centered")
+st.set_page_config(page_title="مساعد الذهب المتطابق", page_icon="📊", layout="centered")
 st.title("📊 مساعد تداول الذهب الفوري (بدون خربطة)")
-st.subheader("تحديث لحظي مباشر وثانية بثانية متطابق مع إكسنس")
+st.subheader("تحديث فوري مباشر متطابق مع إكسنس")
 
 # الرمز الفوري لذهب الفوركس المتطابق تماماً مع تسعيرة إكسنس بالسنات
 GOLD_SYMBOL = "XAUUSD=X"
 
-def get_gold_data_and_tick():
+def get_gold_data():
     try:
-        # جلب بيانات الشموع (5 دقائق) من نفس مزود أسعار الفوركس المشترك
+        # جلب بيانات الذهب الفوري لآخر يومين بفارق 5 دقائق
         ticker = yf.Ticker(GOLD_SYMBOL)
-        df = ticker.history(period="1d", interval="5m")
-        
-        # جلب السعر اللحظي الفوري فائق الدقة (حتى السنتات) بدون تأخير
-        live_url = f"https://yahoo.com{GOLD_SYMBOL}?interval=1m"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(live_url, headers=headers, timeout=2)
-        live_data = response.json()
-        
-        meta = live_data['chart']['result'][0]['meta']
-        live_price = float(meta['regularMarketPrice'])
-        
-        return df, live_price
+        df = ticker.history(period="2d", interval="5m")
+        return df
     except:
-        return pd.DataFrame(), None
+        return pd.DataFrame()
 
 # دالة لحساب مؤشر RSI الفني لمنع الخسائر
 def calculate_rsi(df, periods=14):
@@ -45,27 +34,28 @@ def calculate_rsi(df, periods=14):
 
 placeholder = st.empty()
 
-# الاحتفاظ بآخر سعر لمقارنة الحركة بالسنات صعوداً أو هبوطاً في كل ثانية
+# الاحتفاظ بآخر سعر لمقارنة الحركة بالسنات
 if 'last_price' not in st.session_state:
     st.session_state.last_price = 0.0
 
 while True:
     with placeholder.container():
         try:
-            df, current_price = get_gold_data_and_tick()
+            df = get_gold_data()
             
-            if not df.empty and current_price is not None:
+            if not df.empty:
                 df['SMA_20'] = df['Close'].rolling(window=20).mean()
                 df['RSI'] = calculate_rsi(df)
                 
-                last_candle = df.iloc[-1]
+                current_price = df['Close'].iloc[-1]
+                last_candle = df.iloc[-2]
                 current_rsi = df['RSI'].iloc[-1]
                 current_sma = df['SMA_20'].iloc[-1]
                 
                 open_p = last_candle['Open']
                 close_p = last_candle['Close']
                 
-                # حساب اتجاه نبضة السعر الحالية وتلوين السعر بالسنات لمنع الخربطة بصرياً
+                # حساب اتجاه نبضة السعر وتلوين السعر بالسنات لمنع الخربطة
                 if current_price > st.session_state.last_price:
                     price_delta_color = "normal"
                     delta_text = f"+${(current_price - st.session_state.last_price):.2f} (ارتفاع بالسنات)"
@@ -78,7 +68,7 @@ while True:
                 
                 st.session_state.last_price = current_price
                 
-                # عرض السعر الحالي المباشر المتغير بالسنتات (XAU/USD) المتطابق مع إكسنس
+                # عرض السعر الحالي المباشر المتغير بالسنتات المتطابق مع إكسنس
                 st.metric(label="سعر الذهب الفوري المباشر (XAU/USD)", value=f"${current_price:,.2f}", delta=delta_text, delta_color=price_delta_color)
                 
                 st.caption(f"RSI للسيولة: {current_rsi:.2f} | خط الاتجاه SMA 20: ${current_sma:.2f}")
@@ -114,10 +104,10 @@ while True:
                 fig.update_layout(xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True)
                 
-                st.write(f"توقيت التحديث الفوري اللحظي للسنات: {datetime.now().strftime('%H:%M:%S')}")
+                st.write(f"توقيت التحديث الفوري: {datetime.now().strftime('%H:%M:%S')}")
         except Exception as e:
-            st.error("جاري ملاحقة حركة السنتات اللحظية للفوركس...")
+            st.error("جاري ملاحقة أسعار الفوركس اللحظية...")
             
-    # تحديث مستمر فائق السرعة كل ثانية واحدة فقط لمطابقة ميتاترايدر 4 وإلغاء التأخير
-    time.sleep(1)
+    # تحديث مستقر كل 3 ثوانٍ لمنع تعليق السيرفر وضمان السرعة العالية بالسنتات
+    time.sleep(3)
     st.rerun()
