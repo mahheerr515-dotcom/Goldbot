@@ -1,70 +1,93 @@
 import streamlit as st
+import yfinance as yf
+import pandas as pd
+import plotly.graph_objects as go
+import time
+from datetime import datetime
 
 # إعدادات واجهة التطبيق لتناسب شاشة الهاتف
-st.set_page_config(page_title="مساعد الذهب اللحظي المتكامل", page_icon="📊", layout="centered")
-st.title("📊 مساعد تداول الذهب الفوري (تأخير 0 ثانية)")
-st.subheader("تحديث لحظي مباشر ومتوافق تماماً مع إكسنس")
+st.set_page_config(page_title="مساعد الذهب الاحترافي المستقر", page_icon="📊", layout="centered")
+st.title("📊 مساعد تداول الذهب الفوري (النسخة المستقرة)")
+st.subheader("تحليل فوري متزامن وثابت لمنع الخربطة")
 
-# استخدام واجهة جافا سكريبت مدمجة ومفتوحة تسحب السعر من خادم البورصة المستقر للمتصفحات بدون قيود حظر
-st.components.v1.html(
-    """
-    <div id="crypto-container" style="font-family: Arial, sans-serif; direction: rtl; text-align: center; color: white; background-color: #0e1117; padding: 10px;">
-        <h3 style="color: #888;">سعر الذهب الفوري المباشر (XAU/USD)</h3>
-        <h1 id="price" style="font-size: 50px; margin: 10px 0; color: #fff; font-weight: bold;">جاري الاتصال...</h1>
-        <div id="signal-box" style="padding: 20px; border-radius: 10px; font-size: 24px; font-weight: bold; background-color: #6c757d; color: white;">
-            ⏳ جاري تحليل المؤشرات والشموع... <br><span style="font-size: 60px;">🔄</span>
-        </div>
-        <br>
-        <p style="color: #6c757d; font-size: 14px;" id="time">توقيت آخر تحديث: --:--:--</p>
-    </div>
+# الرمز الفوري الأكثر استقراراً وعالمية للذهب مقابل الدولار
+GOLD_SYMBOL = "GC=F"
 
-    <script>
-        async function fetchGoldPrice() {
-            try {
-                // الاتصال المباشر والمفتوح للمتصفحات عبر خادم CryptoCompare الصافي لأسعار الذهب الفورية بدون أي حظر أو قيود
-                const response = await fetch('https://cryptocompare.com');
-                const result = await response.json();
+def get_gold_data():
+    try:
+        # سحب البيانات بنظام مستقر لآخر يومين بفارق 5 دقائق لكل شمعة
+        ticker = yf.Ticker(GOLD_SYMBOL)
+        df = ticker.history(period="2d", interval="5m")
+        return df
+    except:
+        return pd.DataFrame()
+
+# دالة حساب مؤشر RSI الفني المعتمد لمنع الخسائر
+def calculate_rsi(df, periods=14):
+    close_delta = df['Close'].diff()
+    up = close_delta.clip(lower=0)
+    down = -1 * close_delta.clip(upper=0)
+    ma_up = up.ewm(com=periods - 1, adjust=False).mean()
+    ma_down = down.ewm(com=periods - 1, adjust=False).mean()
+    rsi = ma_up / ma_down
+    return 100 - (100 / (1 + rsi))
+
+placeholder = st.empty()
+
+while True:
+    with placeholder.container():
+        try:
+            df = get_gold_data()
+            if not df.empty:
+                # حساب المؤشرات الفنية بدقة (SMA 20 و RSI) بالخلفية
+                df['SMA_20'] = df['Close'].rolling(window=20).mean()
+                df['RSI'] = calculate_rsi(df)
                 
-                if (result && result.USD) {
-                    const currentPrice = parseFloat(result.USD).toFixed(2);
-                    
-                    // تحديث السعر الكبير الحقيقي على الشاشة
-                    document.getElementById('price').innerText = "$" + currentPrice;
-                    
-                    const signalBox = document.getElementById('signal-box');
-                    
-                    // قراءة اتجاه حركة السعر اللحظية والمؤشرات لتوليد الإشارات فوراً وبدون أي خربطة
-                    // نأخذ عينة عشوائية ذكية من نبض الحركة لمحاكاة الاتجاه اللحظي السريع
-                    const randomFilter = Math.random();
-                    if (randomFilter > 0.55) {
-                        signalBox.style.backgroundColor = "#d4edda";
-                        signalBox.style.color = "#155724";
-                        signalBox.innerHTML = "🎯 إشارة مؤكدة: خذ صفقة شراء (Buy) الآن على MT4 <br><span style='font-size: 80px; color: #28a745;'>⬆️</span>";
-                    } else if (randomFilter < 0.45) {
-                        signalBox.style.backgroundColor = "#f8d7da";
-                        signalBox.style.color = "#721c24";
-                        signalBox.innerHTML = "🎯 إشارة مؤكدة: خذ صفقة بيع (Sell) الآن على MT4 <br><span style='font-size: 80px; color: #dc3545;'>⬇️</span>";
-                    } else {
-                        signalBox.style.backgroundColor = "#e2e3e5";
-                        signalBox.style.color = "#383d41";
-                        signalBox.innerHTML = "⏳ حالة السوق: تذبذب أو نطاق ضيق (انتظر خارج السوق) <br><span style='font-size: 80px; color: #6c757d;'>🔄</span>";
-                    }
-                    
-                    const now = new Date();
-                    document.getElementById('time').innerText = "توقيت التحديث الفوري اللحظي للسنات: " + now.toLocaleTimeString();
-                }
-            } catch (error) {
-                document.getElementById('price').innerText = "جاري الاتصال بالبورصة...";
-            }
-        }
-
-        // تحديث مستمر فائق السرعة كل ثانيتين مباشرة متوافق مع شاشة الجوال تماماً
-        setInterval(fetchGoldPrice, 2000);
-        fetchGoldPrice();
-    </script>
-    """,
-    height=320
-)
-
-st.write("---")
-st.info("ملاحظة: هذا التحديث يتصل مباشرة بالبورصة العالمية من متصفح جوالك لتفادي أي تعليق في السيرفر السحابي مجدداً.")
+                current_price = df['Close'].iloc[-1]
+                last_candle = df.iloc[-2]
+                current_rsi = df['RSI'].iloc[-1]
+                current_sma = df['SMA_20'].iloc[-1]
+                
+                open_p = last_candle['Open']
+                close_p = last_candle['Close']
+                candle_body = abs(close_p - open_p)
+                
+                # عرض سعر الذهب المباشر بشكل أنيق ومقروء
+                st.metric(label="سعر الذهب الفوري الحالي (XAU/USD)", value=f"${current_price:,.2f}")
+                
+                # عرض قراءات المؤشرات التي يحللها البرنامج تلقائياً بالخلفية
+                st.caption(f"RSI للسيولة: {current_rsi:.2f} | خط الاتجاه SMA 20: ${current_sma:.2f}")
+                
+                # --- إستراتيجية الأسهم والمربعات الملونة المستقرة ---
+                if close_p > open_p and candle_body > 0.5 and current_price > current_sma and current_rsi < 65:
+                    st.success("🎯 إشارة مؤكدة: خذ صفقة شراء (Buy) الآن على MT4")
+                    st.markdown("<div style='background-color: #d4edda; padding: 20px; border-radius: 10px; text-align: center;'><h1 style='color: #28a745; font-size: 100px; margin: 0;'>⬆️</h1></div>", unsafe_allow_html=True)
+                elif close_p < open_p and candle_body > 0.5 and current_price < current_sma and current_rsi > 35:
+                    st.error("🎯 إشارة مؤكدة: خذ صفقة بيع (Sell) الآن على MT4")
+                    st.markdown("<div style='background-color: #f8d7da; padding: 20px; border-radius: 10px; text-align: center;'><h1 style='color: #dc3545; font-size: 100px; margin: 0;'>⬇️</h1></div>", unsafe_allow_html=True)
+                else:
+                    st.info("⏳ حالة السوق: تذبذب أو اتجاه غير مؤكد (انتظر خارج السوق)")
+                    st.markdown("<div style='background-color: #e2e3e5; padding: 20px; border-radius: 10px; text-align: center;'><h1 style='color: #6c757d; font-size: 100px; margin: 0;'>🔄</h1></div>", unsafe_allow_html=True)
+                
+                # رسم مخطط الشموع اليابانية التفاعلي الموثوق
+                st.write("---")
+                st.subheader("📈 رسم الشموع اليابانية الفوري (فريم 5 دقائق)")
+                
+                df_chart = df.tail(36)
+                fig = go.Figure(data=[go.Candlestick(
+                    x=df_chart.index, open=df_chart['Open'], high=df_chart['High'], low=df_chart['Low'], close=df_chart['Close'],
+                    increasing_line_color='green', decreasing_line_color='red'
+                )])
+                
+                # إضافة خط المتوسط المتحرك البرتقالي على الرسم
+                fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['SMA_20'], mode='lines', name='SMA 20', line=dict(color='orange', width=2)))
+                fig.update_layout(xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.write(f"توقيت آخر تحديث ناجح: {datetime.now().strftime('%H:%M:%S')}")
+        except Exception as e:
+            st.error("جاري الاتصال المباشر بمزود الأسعار وتحديث الشموع والمؤشرات...")
+            
+    # تحديث كل 15 ثانية لمنع الحظر السحابي وضمان استمرارية البرنامج طوال اليوم بانتظام
+    time.sleep(15)
+    st.rerun()
