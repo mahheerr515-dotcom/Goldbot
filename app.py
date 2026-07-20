@@ -12,13 +12,8 @@ st.subheader("تحديث فوري مباشر متطابق مع إكسنس")
 # الرمز الفوري لذهب الفوركس المتطابق تماماً مع تسعيرة إكسنس بالسنات
 GOLD_SYMBOL = "XAUUSD=X"
 
-# كود التحديث التلقائي الآمن والمستقر كل 5 ثوانٍ لمنع تعليق السيرفر
-if "counter" not in st.session_state:
-    st.session_state.counter = 0
-
-# تحديث الصفحة تلقائياً كل 5000 مللي ثانية (5 ثوانٍ) بشكل مستقر تماماً
+# تفعيل كود التحديث التلقائي المتوافق مع المتصفح
 time_interval = 5000 
-st.form_submit_button = False
 st.markdown(f"""
     <iframe src="about:blank" style="display:none" onload="setTimeout(() => {{ window.location.reload(); }}, {time_interval});"></iframe>
 """, unsafe_allow_html=True)
@@ -107,7 +102,7 @@ try:
         
         fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['SMA_20'], mode='lines', name='SMA 20', line=dict(color='orange', width=2)))
         
-                fig.update_layout(xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+        fig.update_layout(xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=10, b=10), height=350, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
         
         st.write(f"توقيت التحديث الفوري: {datetime.now().strftime('%H:%M:%S')}")
